@@ -28,7 +28,7 @@ HOMEPAGE="https://github.com/ValveSoftware/wine/"
 LICENSE="LGPL-2.1+ BSD-2 IJG MIT OPENLDAP ZLIB gsm libpng2 libtiff"
 SLOT="${PV}"
 IUSE="
-	+abi_x86_32 +abi_x86_64 +alsa crossdev-mingw custom-cflags
+	+abi_x86_32 +abi_x86_64 +alsa clang crossdev-mingw custom-cflags
 	+fontconfig +gecko +gstreamer llvm-libunwind +mono nls osmesa
 	perl pulseaudio +sdl selinux +ssl +strip udev udisks +unwind
 	usb v4l video_cards_amdgpu wow64 +xcomposite xinerama
@@ -63,10 +63,8 @@ WINE_DLOPEN_DEPEND="
 	xcomposite? ( x11-libs/libXcomposite[${MULTILIB_USEDEP}] )
 	xinerama? ( x11-libs/libXinerama[${MULTILIB_USEDEP}] )
 "
-# gcc: for -latomic with clang
 WINE_COMMON_DEPEND="
 	${WINE_DLOPEN_DEPEND}
-	sys-devel/gcc:*
 	x11-libs/libX11[${MULTILIB_USEDEP}]
 	x11-libs/libXext[${MULTILIB_USEDEP}]
 	x11-libs/libdrm[video_cards_amdgpu?,${MULTILIB_USEDEP}]
@@ -116,9 +114,12 @@ BDEPEND="
 	sys-devel/flex
 	virtual/pkgconfig
 	nls? ( sys-devel/gettext )
-	!crossdev-mingw? (
-		>=dev-util/mingw64-toolchain-10.0.0_p1-r2[${MULTILIB_USEDEP}]
-		wow64? ( dev-util/mingw64-toolchain[abi_x86_32] )
+	clang? ( sys-devel/clang )
+	!clang? (
+		!crossdev-mingw? (
+			>=dev-util/mingw64-toolchain-10.0.0_p1-r2[${MULTILIB_USEDEP}]
+			wow64? ( dev-util/mingw64-toolchain[abi_x86_32] )
+		)
 	)
 "
 IDEPEND=">=app-eselect/eselect-wine-2"
@@ -175,10 +176,6 @@ src_prepare() {
 		# and it still gets used in install phase despite --with-mingw,
 		# drop as a quick fix for now which hopefully should be safe
 		sed -i '/MSVCRTFLAGS=/s/-mabi=ms//' configure.ac || die
-
-		# needed by Valve's fsync patches if using clang (undef atomic_load_8)
-		sed -e '/^UNIX_LIBS.*=/s/$/ -latomic/' \
-			-i dlls/{ntdll,winevulkan}/Makefile.in || die
 	fi
 
 	# ensure .desktop calls this variant + slot
@@ -282,11 +279,17 @@ src_configure() {
 
 	use crossdev-mingw || PATH=${BROOT}/usr/lib/mingw64-toolchain/bin:${PATH}
 
-	# CROSSCC was formerly recognized by wine, thus been using similar
-	# variables (subject to change, esp. if ever make a mingw.eclass).
-	local mingwcc_amd64=${CROSSCC:-${CROSSCC_amd64:-x86_64-w64-mingw32-gcc}}
-	local mingwcc_x86=${CROSSCC:-${CROSSCC_x86:-i686-w64-mingw32-gcc}}
-	local -n mingwcc=mingwcc_$(usex abi_x86_64 amd64 x86)
+	if use clang ; then
+		local mingwcc_amd64="clang"
+		local mingwcc_x86="clang"
+		local -n mingwcc="clang"
+	else
+		# CROSSCC was formerly recognized by wine, thus been using similar
+		# variables (subject to change, esp. if ever make a mingw.eclass).
+		local mingwcc_amd64=${CROSSCC:-${CROSSCC_amd64:-x86_64-w64-mingw32-gcc}}
+		local mingwcc_x86=${CROSSCC:-${CROSSCC_x86:-i686-w64-mingw32-gcc}}
+		local -n mingwcc=mingwcc_$(usex abi_x86_64 amd64 x86)
+	fi
 
 	conf+=(
 		ac_cv_prog_x86_64_CC="${mingwcc_amd64}"
