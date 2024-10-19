@@ -90,6 +90,16 @@ multilib_src_configure() {
 		# avoid dependency on libgcc_s if compiler-rt is used
 		-DLIBUNWIND_USE_COMPILER_RT=${use_compiler_rt}
 	)
+
+	if target_is_not_host || tc-is-cross-compiler ; then
+		mycmakeargs+=(
+			# Without this, the compiler will compile a test program
+			# and fail due to no builtins.
+			-DCMAKE_C_COMPILER_WORKS=1
+			-DCMAKE_CXX_COMPILER_WORKS=1
+		)
+	fi
+
 	if use test; then
 		mycmakeargs+=(
 			-DLLVM_ENABLE_RUNTIMES="libunwind;libcxxabi;libcxx"
