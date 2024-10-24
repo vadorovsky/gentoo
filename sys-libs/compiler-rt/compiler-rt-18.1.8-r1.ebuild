@@ -71,12 +71,8 @@ src_configure() {
 	BUILD_DIR=${WORKDIR}/${P}_build
 
 	if use clang && ! is_crosspkg; then
-		# Only do this conditionally to allow overriding with
-		# e.g. CC=clang-13 in case of breakage
-		if ! tc-is-clang ; then
-			local -x CC=${CHOST}-clang
-			local -x CXX=${CHOST}-clang++
-		fi
+		local -x CC=${CHOST}-clang
+		local -x CXX=${CHOST}-clang++
 
 		strip-unsupported-flags
 	fi
@@ -118,7 +114,7 @@ src_configure() {
 		)
 	fi
 
-	if is_crosspkg; then
+	if is_crosspkg || target_is_not_host || tc-is-cross-compiler; then
 		# Needed to target built libc headers
 		export CFLAGS="${CFLAGS} -isystem /usr/${CTARGET}/usr/include"
 		mycmakeargs+=(
@@ -127,14 +123,17 @@ src_configure() {
 			-DCMAKE_C_COMPILER_WORKS=1
 			-DCMAKE_CXX_COMPILER_WORKS=1
 
+			-DCMAKE_ASM_COMPILER_TARGET="${CTARGET}"
+			-DCMAKE_C_COMPILER_TARGET="${CTARGET}"
+			-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON
+		)
+	fi
+	if is_crosspkg; then
+		mycmakeargs+=(
 			# Without this, compiler-rt install location is not unique
 			# to target triples, only to architecture.
 			# Needed if you want to target multiple libcs for one arch.
 			-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=ON
-
-			-DCMAKE_ASM_COMPILER_TARGET="${CTARGET}"
-			-DCMAKE_C_COMPILER_TARGET="${CTARGET}"
-			-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON
 		)
 	fi
 
