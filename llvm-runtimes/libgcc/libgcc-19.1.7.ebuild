@@ -104,6 +104,19 @@ src_configure() {
 	cmake_src_configure
 }
 
+gen_ldscript() {
+	local output_format
+	output_format=$($(tc-getCC) ${CFLAGS} ${LDFLAGS} -Wl,--verbose 2>&1 | sed -n 's/^OUTPUT_FORMAT("\([^"]*\)",.*/\1/p')
+	[[ -n ${output_format} ]] && output_format="OUTPUT_FORMAT ( ${output_format} )"
+	cat <<-END_LDSCRIPT
+/* GNU ld script
+   Include missing dependencies
+*/
+${output_format}
+GROUP ( $@ )
+END_LDSCRIPT
+}
+
 src_compile() {
 	cmake_src_compile
 
@@ -136,6 +149,13 @@ src_compile() {
 		-Wl,-soname,libgcc_s.so.1.0 \
 		-lc -lunwind -shared \
 		-o libgcc_s.so.1.0 || die
+	# Generate libgcc_s.so ldscript for inclusion of libunwind as a
+	# dependency so that `clang -lgcc_s` works out of the box.
+	local deps=(
+		libgcc_s.so.1.0
+		libunwind.so.1.0
+	)
+	gen_ldscript "${deps[*]}" > libgcc_s.so || die
 	cp "${rtlib}" libgcc.a || die
 }
 
@@ -149,8 +169,8 @@ src_test() {
 src_install() {
 	local libdir=$(get_libdir)
 	dolib.so libgcc_s.so.1.0
+	dolib.so libgcc_s.so
 	dolib.a libgcc.a
 	dosym libgcc_s.so.1.0 "/usr/${libdir}/libgcc_s.so.1"
-	dosym libgcc_s.so.1 "/usr/${libdir}/libgcc_s.so"
 	dosym libunwind.a "/usr/${libdir}/libgcc_eh.a"
 }
