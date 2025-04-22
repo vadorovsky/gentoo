@@ -70,7 +70,7 @@ done
 LICENSE="|| ( MIT Apache-2.0 ) BSD BSD-1 BSD-2 BSD-4"
 SLOT="${PV%%_*}" # Beta releases get to share the same SLOT as the eventual stable
 
-IUSE="big-endian clippy cpu_flags_x86_sse2 debug dist doc llvm-libunwind lto rustfmt rust-analyzer rust-src system-llvm test wasm ${ALL_LLVM_TARGETS[*]}"
+IUSE="big-endian bpf clippy cpu_flags_x86_sse2 debug dist doc llvm-libunwind lto rustfmt rust-analyzer rust-src system-llvm test wasm ${ALL_LLVM_TARGETS[*]}"
 
 if [[ ${PV} = *9999* ]]; then
 	# These USE flags require nightly rust
@@ -128,6 +128,7 @@ RDEPEND="${DEPEND}
 "
 
 REQUIRED_USE="|| ( ${ALL_LLVM_TARGETS[*]} )
+	bpf? ( llvm_targets_BPF )
 	rust-analyzer? ( rust-src )
 	test? ( ${ALL_LLVM_TARGETS[*]} )
 	wasm? ( llvm_targets_WebAssembly )
@@ -330,6 +331,9 @@ src_configure() {
 	for v in $(multilib_get_enabled_abi_pairs); do
 		rust_targets+=",\"$(rust_abi $(get_abi_CHOST ${v##*.}))\""
 	done
+	if use bpf; then
+		rust_targets+=",\"bpfeb-unknown-none\",\"bpfel-unknown-none\""
+	fi
 	if use wasm; then
 		rust_targets+=",\"wasm32-unknown-unknown\""
 		if use system-llvm; then
