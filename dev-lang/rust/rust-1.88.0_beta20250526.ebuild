@@ -517,10 +517,17 @@ src_configure() {
 		$(if use lto && tc-is-clang && ! tc-ld-is-mold; then
 			echo "use-lld = true"
 		fi)
-		# only deny warnings if doc+wasm are NOT requested, documenting stage0 wasm std fails without it
-		# https://github.com/rust-lang/rust/issues/74976
-		# https://github.com/rust-lang/rust/issues/76526
-		deny-warnings = $(usex rust_sysroots_wasm $(usex doc false true) true)
+		# only deny warnings if
+		# * doc+wasm are NOT requested, documenting stage0 wasm std fails
+		#   without it
+		#   https://github.com/rust-lang/rust/issues/74976
+		#   https://github.com/rust-lang/rust/issues/76526
+		# * doc+BPF are NOT requested, building anything for bpf targets
+		#   requires bpf-linker; but running bpf-linker test suite requires
+		#   a rust toolchain with BPF sysroots to be present on the system -
+		#   a chicken-egg problem, where ignoring the doc warning is a lesser
+		#   evil
+		deny-warnings = $(usex rust_sysroots_bpf $(usex rust_sysroots_wasm $(usex doc false true) true))
 		backtrace-on-ice = true
 		jemalloc = false
 		# See https://github.com/rust-lang/rust/issues/121124
