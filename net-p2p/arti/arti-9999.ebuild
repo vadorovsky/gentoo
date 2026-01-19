@@ -57,7 +57,9 @@ src_install() {
 	pushd crates/arti >/dev/null || die
 
 	cargo_src_install
-	newdoc src/arti-example-config.toml arti.toml
+
+	insinto "/etc/arti"
+	newins src/arti-example-config.toml arti.toml
 
 	popd >/dev/null || die
 
