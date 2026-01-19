@@ -4,7 +4,7 @@
 EAPI=8
 
 CRATES=""
-inherit cargo
+inherit cargo systemd
 
 DESCRIPTION="Implementation of Tor in Rust"
 HOMEPAGE="https://tpo.pages.torproject.net/core/arti/ https://gitlab.torproject.org/tpo/core/arti/"
@@ -60,6 +60,10 @@ src_install() {
 
 	insinto "/etc/arti"
 	newins src/arti-example-config.toml arti.toml
+
+	newinitd "${FILESDIR}"/arti.initd arti
+	systemd_dounit "${FILESDIR}"/arti.service
+	keepdir /var/log/arti
 
 	popd >/dev/null || die
 
