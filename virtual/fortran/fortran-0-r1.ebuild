@@ -11,6 +11,7 @@ IUSE="openmp"
 
 RDEPEND="
 	|| (
+		llvm-core/flang
 		sys-devel/gcc[fortran,openmp?]
 		sys-devel/gcc-apple[fortran,openmp?]
 		)"
