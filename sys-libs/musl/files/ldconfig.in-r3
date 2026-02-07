@@ -8,6 +8,7 @@ LDSO_CONF_FILE="/etc/ld.so.conf"
 
 VERBOSE=0
 
+UPDATE_CACHE=1
 UPDATE_LINKS=1
 
 get_options() {
@@ -24,6 +25,9 @@ get_options() {
 		f)
 			LDSO_CONF=${OPTARG}
 			;;
+		N)
+			UPDATE_CACHE=0
+			;;
 		X)
 			UPDATE_LINKS=0
 			;;
@@ -31,7 +35,7 @@ get_options() {
 			echo "Invalid option: -${opt}" >&2
 			exit 1
 			;;
-		n|N|C|p)
+		n|C|p)
 			echo "Unimplemented option: -${opt}" >&2
 			exit 1
 			;;
@@ -149,7 +153,7 @@ LDSO_ARCH=$(basename ${LDSO_PATH})
 LDSO_NAME=${LDSO_ARCH%.so.1}
 ETC_LDSO_PATH="${ROOT}${EPREFIX}/etc/${LDSO_NAME}.path"
 
-changed || exit 0
+[[ ${UPDATE_CACHE} != 0 ]] && changed || exit 0
 X=$(mktemp -p /tmp ${LDSO_NAME}.XXXXXX)
 for d in ${drs}; do
 	echo ${d} >> ${X}
